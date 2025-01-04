@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.support.v7.app.AppCompatActivity;
+
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
@@ -25,6 +26,7 @@ import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -77,9 +79,9 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
     }
 
     private void initView() {
-        mLog = (TextView) findViewById(R.id.log);
-        mMessage = (EditText) findViewById(R.id.message);
-        mSend = (Button) findViewById(R.id.send);
+        mLog =  findViewById(R.id.log);
+        mMessage =  findViewById(R.id.message);
+        mSend =  findViewById(R.id.send);
     }
 
     private void initListener() {
@@ -99,13 +101,16 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(USB_ACTION), 0);
         IntentFilter intentFilter = new IntentFilter(USB_ACTION);
         registerReceiver(mOpenAccessoryReceiver, intentFilter);
-
+        //获取配件列表
         UsbAccessory[] accessories = mUsbManager.getAccessoryList();
         UsbAccessory usbAccessory = (accessories == null ? null : accessories[0]);
         if (usbAccessory != null) {
+            //已拥有配件权限
             if (mUsbManager.hasPermission(usbAccessory)) {
+                //打开配件
                 openAccessory(usbAccessory);
             } else {
+                //请求配件权限
                 mUsbManager.requestPermission(usbAccessory, pendingIntent);
             }
         }
@@ -123,6 +128,7 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
             mFileInputStream = new FileInputStream(fileDescriptor);
             mFileOutputStream = new FileOutputStream(fileDescriptor);
             mSend.setEnabled(true);
+            mLog.setText("连接USB主机成功!\n");
 
             mThreadPool.execute(new Runnable() {
                 @Override
@@ -130,13 +136,15 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
                     int i = 0;
                     while (i >= 0) {
                         try {
-                            i = mFileInputStream.read(mBytes);
+                            i = mFileInputStream.read(mBytes);//每次读取1k
                         } catch (IOException e) {
                             e.printStackTrace();
                             break;
                         }
                         if (i > 0) {
+                            //将读取的字节添加到Buffer
                             mStringBuffer.append(new String(mBytes, 0, i) + "\n");
+                            //向系统发送接收成功消息
                             mHandler.sendEmptyMessage(RECEIVER_MESSAGE_SUCCESS);
                         }
                     }
@@ -157,20 +165,19 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
 
     @Override
     public void onClick(View v) {
-        final String mMessageContent = mMessage.getText().toString();
-        if (!TextUtils.isEmpty(mMessageContent)) {
-            mThreadPool.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        mFileOutputStream.write(mMessageContent.getBytes());
-                        mHandler.sendEmptyMessage(SEND_MESSAGE_SUCCESS);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+            String mMessageContent = mMessage.getText().toString();
+            final String str = TextUtils.isEmpty(mMessageContent)?"===Empty===":mMessageContent;
+            mThreadPool.execute(() -> {
+                try {
+                    final String tmpStr = "["+new Date()+ "] ===>" + str;
+                    //向输出流写入消息
+                    mFileOutputStream.write(tmpStr.getBytes());
+                    //通知系统发送消息成功
+                    mHandler.sendEmptyMessage(SEND_MESSAGE_SUCCESS);
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             });
-        }
     }
 
     @Override

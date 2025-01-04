@@ -8,13 +8,15 @@
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="#211F1F">
 
         <TextView
             android:id="@+id/log"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="20sp"/>
+            android:textColor="#0FEA17"
+            android:textSize="24sp" />
     </ScrollView>
 
     <LinearLayout
@@ -26,12 +28,17 @@
         <EditText
             android:id="@+id/message"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:textColor="#C80DE8"
+            android:textSize="24sp" />
 
         <Button
             android:id="@+id/send"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="发送"/>
+            android:background="#0AD612"
+            android:text="发送"
+            android:textColor="#F9F6F6"
+            android:textSize="24sp" />
     </LinearLayout>
 </RelativeLayout>
