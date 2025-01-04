@@ -44,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
     private FileInputStream       mFileInputStream;
     private FileOutputStream      mFileOutputStream;
     private ExecutorService       mThreadPool;
+    private ExecutorService       mSendThreadPool;
     private byte[]       mBytes        = new byte[1024];
     private StringBuffer mStringBuffer = new StringBuffer();
     private UsbDetachedReceiver mUsbDetachedReceiver;
@@ -92,6 +93,7 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
         mSend.setEnabled(false);
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
         mThreadPool = Executors.newFixedThreadPool(3);
+        mSendThreadPool = Executors.newFixedThreadPool(3);
 
         mUsbDetachedReceiver = new UsbDetachedReceiver(this);
         IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
@@ -130,23 +132,33 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
             mSend.setEnabled(true);
             mLog.setText("连接USB主机成功!\n");
 
-            mThreadPool.execute(new Runnable() {
-                @Override
-                public void run() {
-                    int i = 0;
-                    while (i >= 0) {
-                        try {
-                            i = mFileInputStream.read(mBytes);//每次读取1k
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                            break;
-                        }
-                        if (i > 0) {
-                            //将读取的字节添加到Buffer
-                            mStringBuffer.append(new String(mBytes, 0, i) + "\n");
-                            //向系统发送接收成功消息
-                            mHandler.sendEmptyMessage(RECEIVER_MESSAGE_SUCCESS);
-                        }
+            mSendThreadPool.execute(()->{
+                while (true){
+                    try {
+                        final String tmpStr = "["+new Date()+ "] ===>";
+                        //向输出流写入消息
+                        mFileOutputStream.write(tmpStr.getBytes());
+                        Thread.sleep(100);
+                    } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+
+            mThreadPool.execute(() -> {
+                int i = 0;
+                while (i >= 0) {
+                    try {
+                        i = mFileInputStream.read(mBytes);//每次读取1k
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        break;
+                    }
+                    if (i > 0) {
+                        //将读取的字节添加到Buffer
+                        mStringBuffer.append(new String(mBytes, 0, i) + "\n");
+                        //向系统发送接收成功消息
+                        mHandler.sendEmptyMessage(RECEIVER_MESSAGE_SUCCESS);
                     }
                 }
             });
